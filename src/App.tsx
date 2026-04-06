@@ -133,15 +133,77 @@ export default function App() {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="md:hidden fixed inset-0 z-40 bg-black pt-20 px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="md:hidden fixed inset-0 z-[60] bg-black/95 backdrop-blur-2xl"
           >
-            <div className="flex flex-col gap-6 text-center">
-              <button onClick={() => { setLegalPage(null); setIsMenuOpen(false); }} className="text-xl font-bold">Directorio</button>
-              <button onClick={() => { setLegalPage("about"); setIsMenuOpen(false); }} className="text-xl font-bold">Sobre Nosotros</button>
-              <button onClick={() => { handleShare(); setIsMenuOpen(false); }} className="text-xl font-bold text-blue-400">Compartir Sitio</button>
+            <div className="flex flex-col h-full p-6">
+              <div className="flex justify-end mb-12">
+                <button onClick={() => setIsMenuOpen(false)} className="p-3 bg-white/5 rounded-2xl border border-white/10 text-white">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="flex flex-col gap-4">
+                <button 
+                  onClick={() => { setLegalPage(null); setIsMenuOpen(false); }} 
+                  className="flex items-center justify-between p-6 bg-white/5 rounded-[2rem] border border-white/10 text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-600/20 rounded-2xl flex items-center justify-center">
+                      <Layout className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <div className="text-white font-black text-xl">Directorio</div>
+                      <div className="text-slate-500 text-sm">Explora todas las IAs</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-6 h-6 text-slate-600" />
+                </button>
+
+                <button 
+                  onClick={() => { setLegalPage("about"); setIsMenuOpen(false); }} 
+                  className="flex items-center justify-between p-6 bg-white/5 rounded-[2rem] border border-white/10 text-left group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center">
+                      <Info className="w-6 h-6 text-indigo-400" />
+                    </div>
+                    <div>
+                      <div className="text-white font-black text-xl">Sobre Nosotros</div>
+                      <div className="text-slate-500 text-sm">Nuestra misión</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-6 h-6 text-slate-600" />
+                </button>
+
+                <button 
+                  onClick={() => { handleShare(); setIsMenuOpen(false); }} 
+                  className="flex items-center justify-between p-6 bg-blue-600 rounded-[2rem] text-left group shadow-xl shadow-blue-600/20"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                      <Share2 className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-white font-black text-xl">Compartir</div>
+                      <div className="text-blue-100 text-sm">Invita a tus amigos</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-6 h-6 text-blue-200" />
+                </button>
+              </div>
+
+              <div className="mt-auto pb-8 text-center">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
+                    <Cpu className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-lg font-black tracking-tighter text-white">AIBit</span>
+                </div>
+                <p className="text-slate-600 text-xs font-bold uppercase tracking-widest">© 2024 AIBit</p>
+              </div>
             </div>
           </motion.div>
         )}
@@ -182,10 +244,10 @@ export default function App() {
                 <Sparkles className="w-3 h-3 text-blue-400" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Directorio Curado 2024</span>
               </motion.div>
-              <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white mb-6 leading-[0.85]">
+              <h1 className="text-4xl sm:text-5xl md:text-8xl font-black tracking-tighter text-white mb-6 leading-[1.1] md:leading-[0.85]">
                 El Futuro es <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">Inteligente</span>
               </h1>
-              <p className="text-slate-400 text-lg max-w-2xl mx-auto font-medium leading-relaxed">
+              <p className="text-slate-400 text-base md:text-lg max-w-2xl mx-auto font-medium leading-relaxed px-4">
                 AIBit es el centro de recursos definitivo para encontrar las mejores herramientas de IA que potenciarán tu flujo de trabajo y creatividad.
               </p>
             </header>
@@ -199,21 +261,21 @@ export default function App() {
                 className="mb-16 relative group cursor-pointer"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
-                <div className="relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 overflow-hidden">
-                  <div className="absolute top-0 right-0 p-6">
-                    <div className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/40">
-                      <Star className="w-4 h-4 fill-current" />
+                <div className="relative bg-white/5 border border-white/10 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 flex flex-col md:flex-row items-center gap-8 overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 md:p-6">
+                    <div className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] md:text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/40">
+                      <Star className="w-3 h-3 md:w-4 md:h-4 fill-current" />
                       Herramienta del Día
                     </div>
                   </div>
-                  <div className="w-full md:w-1/3 aspect-square rounded-3xl overflow-hidden shadow-2xl">
+                  <div className="w-full md:w-1/3 aspect-video md:aspect-square rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl">
                     <img src={toolOfTheDay.imageUrl} alt={toolOfTheDay.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
                   </div>
                   <div className="flex-1 text-center md:text-left">
-                    <span className="text-blue-400 font-black text-xs uppercase tracking-[0.2em] mb-4 block">{toolOfTheDay.category}</span>
-                    <h2 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">{toolOfTheDay.name}</h2>
-                    <p className="text-slate-400 text-lg mb-8 line-clamp-3 leading-relaxed">{toolOfTheDay.description}</p>
-                    <button className="bg-white text-black px-8 py-4 rounded-2xl font-black hover:bg-blue-400 hover:text-white transition-all flex items-center gap-3 mx-auto md:mx-0">
+                    <span className="text-blue-400 font-black text-[10px] md:text-xs uppercase tracking-[0.2em] mb-2 md:mb-4 block">{toolOfTheDay.category}</span>
+                    <h2 className="text-3xl md:text-5xl font-black text-white mb-3 md:mb-4 tracking-tight leading-tight">{toolOfTheDay.name}</h2>
+                    <p className="text-slate-400 text-sm md:text-lg mb-6 md:mb-8 line-clamp-2 md:line-clamp-3 leading-relaxed">{toolOfTheDay.description}</p>
+                    <button className="w-full md:w-auto bg-white text-black px-8 py-4 rounded-xl md:rounded-2xl font-black hover:bg-blue-400 hover:text-white transition-all flex items-center justify-center gap-3">
                       Explorar Ahora
                       <ChevronRight className="w-5 h-5" />
                     </button>
@@ -224,32 +286,34 @@ export default function App() {
 
             {/* Search & Categories */}
             <div className="mb-12 space-y-8">
-              <div className="relative max-w-2xl mx-auto group">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+              <div className="relative max-w-2xl mx-auto group px-2">
+                <Search className="absolute left-8 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
                 <input 
                   type="text" 
                   placeholder="Busca herramientas, categorías o funciones..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-6 pl-16 pr-6 text-white text-lg placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all shadow-2xl"
+                  className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-5 md:py-6 pl-16 pr-6 text-white text-base md:text-lg placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all shadow-2xl"
                 />
               </div>
 
-              <div className="flex flex-wrap justify-center gap-3">
-                {["Todos", "Favoritos", ...CATEGORIES.slice(1)].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all border ${
-                      activeCategory === cat 
-                        ? "bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/30 scale-105" 
-                        : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:border-white/20"
-                    }`}
-                  >
-                    {cat === "Favoritos" ? <Heart className={`w-4 h-4 ${favorites.length > 0 ? 'fill-red-500 text-red-500' : ''}`} /> : getCategoryIcon(cat)}
-                    {cat}
-                  </button>
-                ))}
+              <div className="relative">
+                <div className="flex overflow-x-auto pb-4 md:pb-0 md:flex-wrap md:justify-center gap-3 no-scrollbar px-4 md:px-0 scroll-smooth">
+                  {["Todos", "Favoritos", ...CATEGORIES.slice(1)].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all border ${
+                        activeCategory === cat 
+                          ? "bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/30 scale-105" 
+                          : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:border-white/20"
+                      }`}
+                    >
+                      {cat === "Favoritos" ? <Heart className={`w-4 h-4 ${favorites.length > 0 ? 'fill-red-500 text-red-500' : ''}`} /> : getCategoryIcon(cat)}
+                      {cat}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -413,8 +477,8 @@ export default function App() {
                 <X className="w-5 h-5" />
               </button>
 
-              <div className="flex flex-col lg:flex-row h-full max-h-[90vh] overflow-y-auto lg:overflow-hidden">
-                <div className="lg:w-1/2 h-64 lg:h-auto relative">
+              <div className="flex flex-col lg:flex-row h-full max-h-[90vh] overflow-y-auto lg:overflow-hidden no-scrollbar">
+                <div className="lg:w-1/2 h-48 sm:h-64 lg:h-auto relative flex-shrink-0">
                   <img 
                     src={selectedTool.imageUrl} 
                     alt={selectedTool.name}
@@ -446,8 +510,8 @@ export default function App() {
                     </button>
                   </div>
 
-                  <h2 className="text-5xl font-black text-white mb-6 tracking-tight leading-tight">{selectedTool.name}</h2>
-                  <p className="text-slate-400 text-xl leading-relaxed mb-10 font-medium">
+                  <h2 className="text-3xl sm:text-5xl font-black text-white mb-6 tracking-tight leading-tight">{selectedTool.name}</h2>
+                  <p className="text-slate-400 text-base sm:text-xl leading-relaxed mb-10 font-medium">
                     {selectedTool.description}
                   </p>
 
