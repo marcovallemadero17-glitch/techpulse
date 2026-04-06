@@ -12,12 +12,12 @@ const LEGAL_CONTENT = {
     title: "Política de Privacidad",
     content: `
       ### 1. Información que Recopilamos
-      CeroBit News no recopila datos personales identificables de forma directa. Utilizamos cookies estándar y tecnologías de análisis para mejorar la experiencia del usuario.
+      CeroBit Games no recopila datos personales identificables de forma directa. Utilizamos cookies estándar y tecnologías de análisis para mejorar la experiencia del usuario y recordar tus preferencias de búsqueda de juegos.
 
       ### 2. Uso de la Información
       La información recopilada se utiliza exclusivamente para:
-      - Personalizar la experiencia de lectura.
-      - Analizar el tráfico del sitio para mejorar nuestro contenido.
+      - Personalizar la experiencia de búsqueda de videojuegos.
+      - Analizar el tráfico del sitio para mejorar nuestro catálogo.
       - Mostrar anuncios relevantes a través de socios publicitarios.
 
       ### 3. Cookies y Tecnologías de Seguimiento
@@ -47,16 +47,16 @@ const LEGAL_CONTENT = {
     title: "Términos y Condiciones",
     content: `
       ### 1. Aceptación de Términos
-      Al acceder a CeroBit News, aceptas cumplir con estos términos de servicio y todas las leyes y regulaciones aplicables.
+      Al acceder a CeroBit Games, aceptas cumplir con estos términos de servicio y todas las leyes y regulaciones aplicables.
 
       ### 2. Uso de Contenido
-      El contenido de este sitio es generado por IA con fines informativos. No garantizamos la exactitud absoluta de cada noticia y recomendamos verificar con las fuentes originales proporcionadas.
+      El contenido de este sitio es generado por IA con fines informativos sobre videojuegos. No garantizamos la exactitud absoluta de cada requisito técnico y recomendamos verificar con los sitios oficiales de descarga proporcionados.
 
       ### 3. Propiedad Intelectual
-      CeroBit respeta los derechos de autor de las fuentes originales. Cada noticia incluye un enlace a la fuente primaria de información.
+      CeroBit Games respeta los derechos de autor de los desarrolladores de videojuegos. Cada juego incluye un enlace al sitio oficial de descarga o compra.
 
       ### 4. Limitación de Responsabilidad
-      CeroBit no se hace responsable de las decisiones tomadas basadas en la información proporcionada en este sitio.
+      CeroBit Games no se hace responsable de las decisiones tomadas basadas en la información proporcionada en este sitio, ni de los problemas técnicos que puedan surgir al descargar juegos desde enlaces externos.
     `
   },
   cookies: {
@@ -66,7 +66,7 @@ const LEGAL_CONTENT = {
       Las cookies son pequeños archivos de texto que se almacenan en tu dispositivo cuando visitas un sitio web.
 
       ### ¿Cómo las usamos?
-      - **Preferencias:** Para recordar tu categoría de noticias favorita.
+      - **Preferencias:** Para recordar tus categorías de juegos favoritas.
       - **Análisis:** Para entender cómo los usuarios interactúan con el sitio.
       - **Publicidad:** Para mostrar anuncios que puedan ser de tu interés.
 
@@ -93,25 +93,25 @@ export default function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            className="relative w-full max-w-2xl bg-[#0F0F11] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[80vh] border border-white/10"
           >
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-2xl font-black text-slate-900">{content.title}</h2>
-              <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full transition-colors">
-                <X className="w-6 h-6 text-slate-400" />
+            <div className="p-8 border-b border-white/5 flex items-center justify-between">
+              <h2 className="text-2xl font-black text-white">{content.title}</h2>
+              <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                <X className="w-6 h-6 text-slate-500" />
               </button>
             </div>
-            <div className="p-8 overflow-y-auto prose prose-slate max-w-none">
-              <div className="text-slate-600 whitespace-pre-line">
+            <div className="p-8 overflow-y-auto prose prose-invert max-w-none">
+              <div className="text-slate-400 whitespace-pre-line font-medium leading-relaxed">
                 {content.content}
               </div>
             </div>
-            <div className="p-8 border-t border-slate-100 flex justify-end">
+            <div className="p-8 border-t border-white/5 flex justify-end">
               <button 
                 onClick={onClose}
-                className="px-8 py-3 bg-slate-900 text-white rounded-full font-bold text-sm hover:bg-blue-600 transition-all"
+                className="px-8 py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
               >
-                Entendido
+                Cerrar
               </button>
             </div>
           </motion.div>

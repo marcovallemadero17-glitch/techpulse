@@ -1,546 +1,517 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  Cpu, 
-  Apple, 
-  Code, 
-  BrainCircuit, 
-  Globe, 
   Search, 
-  RefreshCw, 
+  Cpu, 
   ExternalLink, 
-  Clock, 
-  ChevronRight,
-  Newspaper,
-  Menu,
+  Info, 
+  ShieldCheck, 
+  FileText, 
+  Mail, 
+  ChevronRight, 
+  Sparkles,
+  Layers,
+  Zap,
+  Code,
+  Video,
+  Image as ImageIcon,
+  Type,
+  Layout,
   X,
-  ArrowLeft,
+  Menu,
   Share2,
-  Bell
+  Heart,
+  Check,
+  TrendingUp,
+  Star
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import { fetchTechNews, fetchNewsDetail, NewsItem } from "./services/newsService";
-import LegalModal from "./components/LegalModals";
+import { AI_TOOLS, AITool, searchTools } from "./services/aiService";
+import { LEGAL_CONTENT } from "./constants/legal";
 
 const CATEGORIES = [
-  { id: "General", name: "General", icon: Globe, color: "text-blue-600" },
-  { id: "Apple", name: "Apple", icon: Apple, color: "text-slate-800" },
-  { id: "Software", name: "Software", icon: Code, color: "text-emerald-600" },
-  { id: "Hardware", name: "Componentes", icon: Cpu, color: "text-orange-600" },
-  { id: "IA", name: "Inteligencia Artificial", icon: BrainCircuit, color: "text-indigo-600" },
+  "Todos",
+  "Generación de Texto",
+  "Generación de Imágenes",
+  "Video y Audio",
+  "Programación",
+  "Productividad"
 ];
 
-const REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutos
-const CACHE_MAX_AGE = 60 * 60 * 1000; // 1 hora
-
 export default function App() {
-  const [activeCategory, setActiveCategory] = useState("General");
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
-  const [hasNewUpdates, setHasNewUpdates] = useState(false);
-  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: "privacy" | "terms" | "cookies" | "contact" }>({
-    isOpen: false,
-    type: "privacy"
+  const [tools, setTools] = useState<AITool[]>(AI_TOOLS);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("Todos");
+  const [selectedTool, setSelectedTool] = useState<AITool | null>(null);
+  const [legalPage, setLegalPage] = useState<keyof typeof LEGAL_CONTENT | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    const saved = localStorage.getItem("aibit_favorites");
+    return saved ? JSON.parse(saved) : [];
   });
-  
-  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const newsRef = useRef<NewsItem[]>([]);
+  const [showToast, setShowToast] = useState(false);
+  const [toolOfTheDay, setToolOfTheDay] = useState<AITool | null>(null);
 
-  // Sincronizar ref con estado
   useEffect(() => {
-    newsRef.current = news;
-  }, [news]);
+    // Select a random tool of the day
+    const randomTool = AI_TOOLS[Math.floor(Math.random() * AI_TOOLS.length)];
+    setToolOfTheDay(randomTool);
+  }, []);
 
-  // Cargar desde cache inicial
   useEffect(() => {
-    const cached = localStorage.getItem(`news_${activeCategory}`);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        setNews(parsed.items);
-        setLastUpdated(parsed.time);
-        setLoading(false);
-      } catch (e) {
-        console.error("Error parsing cache", e);
-      }
-    }
-  }, [activeCategory]);
+    localStorage.setItem("aibit_favorites", JSON.stringify(favorites));
+  }, [favorites]);
 
-  const loadNews = useCallback(async (category: string, isBackground = false, force = false) => {
-    // Si no es forzado y no es background, revisar si el cache es suficientemente reciente
-    if (!force && !isBackground) {
-      const cached = localStorage.getItem(`news_${category}`);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          const now = Date.now();
-          // Si el cache tiene menos de 30 minutos, no re-descargar al cambiar de pestaña
-          if (parsed.timestamp && (now - parsed.timestamp < REFRESH_INTERVAL)) {
-            return;
-          }
-        } catch (e) {
-          // Ignorar error de parseo y descargar
-        }
-      }
-    }
-
-    if (!isBackground) setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchTechNews(category);
-      
-      // Si recibimos exactamente las noticias estáticas de fallback, mostrar aviso
-      const isStaticFallback = data.length > 0 && data[0].id.startsWith("fallback-");
-      
-      if (isBackground) {
-        const currentNews = newsRef.current;
-        if (data.length > 0 && currentNews.length > 0 && data[0].id !== currentNews[0].id) {
-          setHasNewUpdates(true);
-        }
-      } else {
-        setNews(data);
-        const time = new Date().toLocaleTimeString();
-        setLastUpdated(time);
-        localStorage.setItem(`news_${category}`, JSON.stringify({ 
-          items: data, 
-          time,
-          timestamp: Date.now() 
-        }));
-        setHasNewUpdates(false);
-      }
-    } catch (err: any) {
-      console.error(err);
-      // Silent fallback is handled by newsService returning static data
-    } finally {
-      if (!isBackground) setLoading(false);
-    }
-  }, []); // Sin dependencia de news para evitar loop
-
-  // Efecto para carga inicial y cambio de categoría
   useEffect(() => {
-    loadNews(activeCategory);
-    
-    // Configurar refresco automático
-    if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
-    refreshTimerRef.current = setInterval(() => {
-      loadNews(activeCategory, true);
-    }, REFRESH_INTERVAL);
-
-    return () => {
-      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+    const filterTools = async () => {
+      let filtered = await searchTools(searchQuery);
+      if (activeCategory === "Favoritos") {
+        filtered = filtered.filter(t => favorites.includes(t.id));
+      } else if (activeCategory !== "Todos") {
+        filtered = filtered.filter(t => t.category === activeCategory);
+      }
+      setTools(filtered);
     };
-  }, [activeCategory, loadNews]);
+    filterTools();
+  }, [searchQuery, activeCategory, favorites]);
 
-  const handleSelectNews = async (item: NewsItem) => {
-    setSelectedNews(item);
-    if (!item.fullContent) {
-      setLoadingDetail(true);
-      try {
-        const detail = await fetchNewsDetail(item);
-        const updatedItem = { ...item, fullContent: detail };
-        setSelectedNews(updatedItem);
-        // Actualizar en la lista principal para cachear el detalle
-        setNews(prev => prev.map(n => n.id === item.id ? updatedItem : n));
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoadingDetail(false);
-      }
+  const toggleFavorite = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setFavorites(prev => 
+      prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]
+    );
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case "Generación de Texto": return <Type className="w-4 h-4" />;
+      case "Generación de Imágenes": return <ImageIcon className="w-4 h-4" />;
+      case "Video y Audio": return <Video className="w-4 h-4" />;
+      case "Programación": return <Code className="w-4 h-4" />;
+      case "Productividad": return <Zap className="w-4 h-4" />;
+      default: return <Layers className="w-4 h-4" />;
     }
   };
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
-      {/* Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg shadow-slate-900/10">
-            <Newspaper className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-[#0a0a0a] text-slate-200 font-sans selection:bg-blue-500/30">
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setActiveCategory("Todos"); setLegalPage(null); }}>
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <Cpu className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-black tracking-tighter text-white">AIBit</span>
+            </div>
+
+            <div className="hidden md:flex items-center gap-8">
+              <button onClick={() => setLegalPage(null)} className="text-sm font-medium hover:text-blue-400 transition-colors">Directorio</button>
+              <button onClick={() => setLegalPage("about")} className="text-sm font-medium hover:text-blue-400 transition-colors">Sobre Nosotros</button>
+              <button onClick={handleShare} className="flex items-center gap-2 text-sm font-bold bg-blue-600/10 text-blue-400 px-4 py-2 rounded-full border border-blue-500/20 hover:bg-blue-600 hover:text-white transition-all">
+                <Share2 className="w-4 h-4" />
+                Compartir
+              </button>
+            </div>
+
+            <div className="md:hidden">
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-slate-400 hover:text-white">
+                {isMenuOpen ? <X /> : <Menu />}
+              </button>
+            </div>
           </div>
-          <span className="font-black text-xl tracking-tighter text-slate-900">CeroBit</span>
         </div>
-        <button 
-          onClick={toggleSidebar}
-          className="p-2.5 hover:bg-slate-100 rounded-xl transition-all text-slate-600 active:scale-95"
-        >
-          {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-      </header>
+      </nav>
 
-      <div className="flex relative">
-        {/* Sidebar */}
-        <aside className={`
-          fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200/60 transform transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] lg:translate-x-0 lg:static lg:h-screen
-          ${isSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}
-        `}>
-          <div className="p-8 h-full flex flex-col">
-            <div className="hidden lg:flex items-center gap-3.5 mb-14">
-              <div className="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl shadow-slate-900/10">
-                <Newspaper className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-black text-2xl tracking-tighter text-slate-900">CeroBit</span>
-            </div>
-
-            <nav className="space-y-1.5 flex-grow">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] mb-7 px-4">Explorar</p>
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    setActiveCategory(cat.id);
-                    setIsSidebarOpen(false);
-                    setHasNewUpdates(false);
-                  }}
-                  className={`
-                    w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 group relative
-                    ${activeCategory === cat.id 
-                      ? "bg-slate-900 text-white font-bold shadow-lg shadow-slate-900/10" 
-                      : "hover:bg-slate-50 text-slate-500 hover:text-slate-900"}
-                  `}
-                >
-                  <cat.icon className={`w-5 h-5 ${activeCategory === cat.id ? "text-blue-400" : "text-slate-400 group-hover:text-slate-600"}`} />
-                  <span className="text-sm tracking-tight">{cat.name}</span>
-                  {activeCategory === cat.id && (
-                    <motion.div layoutId="active-indicator" className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />
-                  )}
-                </button>
-              ))}
-            </nav>
-
-            <div className="mt-auto pt-8 border-t border-slate-100">
-              <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100/50">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tecnología</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
-                    <BrainCircuit className="w-4 h-4 text-slate-900" />
-                  </div>
-                  <p className="font-bold text-xs text-slate-700 tracking-tight">
-                    Gemini AI Engine
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-grow h-screen overflow-y-auto bg-[#F8F9FA] scroll-smooth">
-          <div className="max-w-6xl mx-auto p-6 lg:p-16">
-            <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-10">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2.5 text-blue-600 font-black">
-                  <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
-                  <span className="text-[10px] uppercase tracking-[0.3em]">En Vivo • Actualizado</span>
-                </div>
-                <h1 className="text-6xl lg:text-7xl font-black tracking-tighter text-slate-900 leading-[0.9]">
-                  {CATEGORIES.find(c => c.id === activeCategory)?.name}
-                </h1>
-              </div>
-
-              <div className="flex flex-col md:flex-row md:items-center gap-6">
-                {lastUpdated && (
-                  <div className="flex flex-col items-start md:items-end">
-                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Última actualización</span>
-                    <span className="text-xs font-bold text-slate-600">{lastUpdated}</span>
-                  </div>
-                )}
-                <button 
-                  onClick={() => loadNews(activeCategory, false, true)}
-                  disabled={loading}
-                  className="flex items-center gap-2.5 px-8 py-4 bg-white border border-slate-200/60 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all duration-300 disabled:opacity-50 shadow-sm active:scale-95"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                  Refrescar
-                </button>
-              </div>
-            </header>
-
-            {/* Background Update Notification */}
-            <AnimatePresence>
-              {hasNewUpdates && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="mb-8 p-4 bg-slate-900 text-white rounded-2xl flex items-center justify-between shadow-xl shadow-slate-900/20"
-                >
-                  <div className="flex items-center gap-3">
-                    <Bell className="w-5 h-5 text-blue-400" />
-                    <span className="text-sm font-medium tracking-tight">Nuevas noticias disponibles</span>
-                  </div>
-                  <button 
-                    onClick={() => loadNews(activeCategory, false, true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all"
-                  >
-                    Actualizar
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence mode="wait">
-              {loading && news.length === 0 ? (
-                <motion.div 
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-                >
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} className="bg-white rounded-[2.5rem] p-8 border border-slate-100 animate-pulse shadow-sm">
-                      <div className="h-52 bg-slate-50 rounded-3xl mb-6" />
-                      <div className="h-7 bg-slate-50 rounded-lg w-3/4 mb-4" />
-                      <div className="h-4 bg-slate-50 rounded-lg w-full mb-2" />
-                      <div className="h-4 bg-slate-50 rounded-lg w-5/6 mb-6" />
-                      <div className="flex justify-between items-center mt-auto">
-                        <div className="h-4 bg-slate-50 rounded-lg w-24" />
-                        <div className="h-8 w-8 bg-slate-50 rounded-full" />
-                      </div>
-                    </div>
-                  ))}
-                </motion.div>
-              ) : error && news.length === 0 ? (
-                <motion.div 
-                  key="error"
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-16 text-center"
-                >
-                  <div className="w-16 h-16 bg-white border border-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <RefreshCw className="w-8 h-8" />
-                  </div>
-                  <p className="text-slate-900 font-bold text-xl mb-2">Estamos actualizando el contenido</p>
-                  <p className="text-slate-500 mb-8 max-w-md mx-auto">Vuelve a intentarlo en unos momentos o refresca la página.</p>
-                  <button 
-                    onClick={() => loadNews(activeCategory, false, true)}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-full font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
-                  >
-                    Reintentar
-                  </button>
-                </motion.div>
-              ) : (
-                <motion.div 
-                  key="content"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10"
-                >
-                  {news.map((item, idx) => (
-                    <motion.article 
-                      key={item.id || idx}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-                      onClick={() => handleSelectNews(item)}
-                      className="group cursor-pointer bg-white rounded-[2rem] border border-slate-200/60 overflow-hidden hover:shadow-[0_32px_64px_-12px_rgba(0,0,0,0.08)] transition-all duration-500 flex flex-col relative"
-                    >
-                      <div className="relative h-64 overflow-hidden">
-                        {item.imageUrl ? (
-                          <img 
-                            src={item.imageUrl} 
-                            alt={item.title}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-out"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-slate-50 flex items-center justify-center">
-                            <Newspaper className="w-12 h-12 text-slate-200" />
-                          </div>
-                        )}
-                        <div className="absolute top-6 left-6">
-                          <span className="px-4 py-2 bg-white/90 backdrop-blur-xl text-slate-900 text-[9px] font-black uppercase tracking-[0.2em] rounded-xl shadow-sm border border-white/20">
-                            {item.source}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="p-9 flex flex-col flex-grow">
-                        <div className="flex items-center gap-2.5 text-slate-400 text-[10px] font-black uppercase tracking-widest mb-5">
-                          <Clock className="w-3.5 h-3.5" />
-                          {item.date}
-                        </div>
-
-                        <h3 className="text-2xl font-black leading-[1.15] mb-5 text-slate-900 group-hover:text-blue-600 transition-colors tracking-tight">
-                          {item.title}
-                        </h3>
-
-                        <div className="text-slate-500 text-sm leading-relaxed mb-10 line-clamp-3 font-medium">
-                          {item.summary}
-                        </div>
-
-                        <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between">
-                          <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2 group-hover:text-blue-600 transition-colors">
-                            Leer artículo
-                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" />
-                          </span>
-                          <div className="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-all duration-300 group-hover:rotate-[-10deg]">
-                            <ArrowLeft className="w-4 h-4 rotate-180" />
-                          </div>
-                        </div>
-                      </div>
-                    </motion.article>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {news.length === 0 && !loading && !error && (
-              <div className="text-center py-32">
-                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Search className="w-10 h-10 text-slate-200" />
-                </div>
-                <p className="text-slate-400 font-medium">No hay noticias disponibles en este momento.</p>
-              </div>
-            )}
-
-            {/* Footer */}
-            <footer className="mt-24 pt-12 border-t border-slate-100 pb-12">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                    <Newspaper className="w-4 h-4 text-slate-400" />
-                  </div>
-                  <span className="font-bold text-lg tracking-tight text-slate-400">CeroBit News</span>
-                </div>
-                
-                <div className="flex flex-wrap justify-center gap-8">
-                  <button onClick={() => setLegalModal({ isOpen: true, type: "privacy" })} className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">Privacidad</button>
-                  <button onClick={() => setLegalModal({ isOpen: true, type: "terms" })} className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">Términos</button>
-                  <button onClick={() => setLegalModal({ isOpen: true, type: "cookies" })} className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">Cookies</button>
-                  <button onClick={() => setLegalModal({ isOpen: true, type: "contact" })} className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">Contacto</button>
-                </div>
-
-                <p className="text-xs text-slate-400 font-medium">© 2026 CeroBit News. Todos los derechos reservados.</p>
-              </div>
-            </footer>
-          </div>
-        </main>
-      </div>
-
-      {/* News Detail Modal */}
+      {/* Mobile Menu */}
       <AnimatePresence>
-        {selectedNews && (
+        {isMenuOpen && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="md:hidden fixed inset-0 z-40 bg-black pt-20 px-4"
           >
-            <div 
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" 
-              onClick={() => setSelectedNews(null)}
-            />
-            <motion.div 
-              initial={{ scale: 0.9, y: 20, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 20, opacity: 0 }}
-              className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col"
-            >
-              <div className="absolute top-6 right-6 z-10 flex gap-3">
-                <button 
-                  onClick={() => window.open(selectedNews.url, '_blank')}
-                  className="p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-blue-600 hover:text-white transition-all text-slate-900"
-                  title="Ver fuente original"
-                >
-                  <ExternalLink className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => setSelectedNews(null)}
-                  className="p-3 bg-white/90 backdrop-blur-md rounded-full shadow-lg hover:bg-slate-100 transition-all text-slate-900"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="overflow-y-auto">
-                <div className="h-[40vh] relative">
-                  {selectedNews.imageUrl ? (
-                    <img 
-                      src={selectedNews.imageUrl} 
-                      alt={selectedNews.title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-                      <Newspaper className="w-20 h-20 text-slate-200" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
-                </div>
-
-                <div className="px-8 md:px-16 pb-16 -mt-32 relative">
-                  <div className="flex items-center gap-4 mb-6">
-                    <span className="px-5 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg shadow-blue-600/20">
-                      {selectedNews.source}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5" />
-                      {selectedNews.date}
-                    </span>
-                  </div>
-
-                  <h2 className="text-4xl md:text-5xl font-black leading-tight text-slate-900 mb-8">
-                    {selectedNews.title}
-                  </h2>
-
-                  {loadingDetail ? (
-                    <div className="space-y-6 animate-pulse">
-                      <div className="h-4 bg-slate-100 rounded w-full" />
-                      <div className="h-4 bg-slate-100 rounded w-5/6" />
-                      <div className="h-4 bg-slate-100 rounded w-full" />
-                      <div className="h-4 bg-slate-100 rounded w-4/6" />
-                      <div className="h-4 bg-slate-100 rounded w-full" />
-                    </div>
-                  ) : (
-                    <div className="prose prose-slate max-w-none prose-headings:font-black prose-p:text-slate-600 prose-p:text-lg prose-p:leading-relaxed prose-a:text-blue-600">
-                      <ReactMarkdown>{selectedNews.fullContent || selectedNews.summary}</ReactMarkdown>
-                    </div>
-                  )}
-
-                  {!loadingDetail && (
-                    <div className="mt-12 pt-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                          <Share2 className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Compartir</p>
-                          <p className="text-sm font-bold text-slate-900">Difunde la noticia</p>
-                        </div>
-                      </div>
-                      
-                      <a 
-                        href={selectedNews.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="w-full md:w-auto px-10 py-4 bg-slate-900 text-white rounded-full font-bold text-sm hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3"
-                      >
-                        Ver en {selectedNews.source}
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
+            <div className="flex flex-col gap-6 text-center">
+              <button onClick={() => { setLegalPage(null); setIsMenuOpen(false); }} className="text-xl font-bold">Directorio</button>
+              <button onClick={() => { setLegalPage("about"); setIsMenuOpen(false); }} className="text-xl font-bold">Sobre Nosotros</button>
+              <button onClick={() => { handleShare(); setIsMenuOpen(false); }} className="text-xl font-bold text-blue-400">Compartir Sitio</button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <LegalModal 
-        isOpen={legalModal.isOpen} 
-        onClose={() => setLegalModal({ ...legalModal, isOpen: false })} 
-        type={legalModal.type} 
-      />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {legalPage ? (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-3xl mx-auto bg-white/5 rounded-3xl p-8 md:p-12 border border-white/10"
+          >
+            <h1 className="text-4xl font-black text-white mb-8 tracking-tight">{LEGAL_CONTENT[legalPage].title}</h1>
+            <div className="prose prose-invert max-w-none">
+              <p className="text-slate-400 leading-relaxed whitespace-pre-wrap">
+                {LEGAL_CONTENT[legalPage].content}
+              </p>
+            </div>
+            <button 
+              onClick={() => setLegalPage(null)}
+              className="mt-12 flex items-center gap-2 text-blue-400 font-bold hover:text-blue-300 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4 rotate-180" />
+              Volver al Directorio
+            </button>
+          </motion.div>
+        ) : (
+          <>
+            {/* Hero Section */}
+            <header className="text-center mb-16 relative">
+              <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-600/20 blur-[120px] rounded-full -z-10" />
+              
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full mb-6"
+              >
+                <Sparkles className="w-3 h-3 text-blue-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Directorio Curado 2024</span>
+              </motion.div>
+              <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white mb-6 leading-[0.85]">
+                El Futuro es <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">Inteligente</span>
+              </h1>
+              <p className="text-slate-400 text-lg max-w-2xl mx-auto font-medium leading-relaxed">
+                AIBit es el centro de recursos definitivo para encontrar las mejores herramientas de IA que potenciarán tu flujo de trabajo y creatividad.
+              </p>
+            </header>
+
+            {/* Tool of the Day */}
+            {toolOfTheDay && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={() => setSelectedTool(toolOfTheDay)}
+                className="mb-16 relative group cursor-pointer"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                <div className="relative bg-white/5 border border-white/10 rounded-[2.5rem] p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 overflow-hidden">
+                  <div className="absolute top-0 right-0 p-6">
+                    <div className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/40">
+                      <Star className="w-4 h-4 fill-current" />
+                      Herramienta del Día
+                    </div>
+                  </div>
+                  <div className="w-full md:w-1/3 aspect-square rounded-3xl overflow-hidden shadow-2xl">
+                    <img src={toolOfTheDay.imageUrl} alt={toolOfTheDay.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="flex-1 text-center md:text-left">
+                    <span className="text-blue-400 font-black text-xs uppercase tracking-[0.2em] mb-4 block">{toolOfTheDay.category}</span>
+                    <h2 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">{toolOfTheDay.name}</h2>
+                    <p className="text-slate-400 text-lg mb-8 line-clamp-3 leading-relaxed">{toolOfTheDay.description}</p>
+                    <button className="bg-white text-black px-8 py-4 rounded-2xl font-black hover:bg-blue-400 hover:text-white transition-all flex items-center gap-3 mx-auto md:mx-0">
+                      Explorar Ahora
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Search & Categories */}
+            <div className="mb-12 space-y-8">
+              <div className="relative max-w-2xl mx-auto group">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                <input 
+                  type="text" 
+                  placeholder="Busca herramientas, categorías o funciones..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-[2rem] py-6 pl-16 pr-6 text-white text-lg placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all shadow-2xl"
+                />
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-3">
+                {["Todos", "Favoritos", ...CATEGORIES.slice(1)].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all border ${
+                      activeCategory === cat 
+                        ? "bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/30 scale-105" 
+                        : "bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    {cat === "Favoritos" ? <Heart className={`w-4 h-4 ${favorites.length > 0 ? 'fill-red-500 text-red-500' : ''}`} /> : getCategoryIcon(cat)}
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tools Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <AnimatePresence mode="popLayout">
+                {tools.map((tool, idx) => (
+                  <motion.div
+                    key={tool.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: idx * 0.05 }}
+                    onClick={() => setSelectedTool(tool)}
+                    className="group bg-white/5 rounded-3xl border border-white/5 overflow-hidden hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer flex flex-col"
+                  >
+                    <div className="aspect-video w-full overflow-hidden relative">
+                      <img 
+                        src={tool.imageUrl} 
+                        alt={tool.name}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      />
+                      <div className="absolute top-3 left-3">
+                        {idx % 3 === 0 && (
+                          <div className="px-2 py-1 bg-green-500 text-black text-[8px] font-black uppercase tracking-widest rounded-md shadow-lg flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" />
+                            Trending
+                          </div>
+                        )}
+                      </div>
+                      <div className="absolute top-3 right-3 flex gap-2">
+                        <button 
+                          onClick={(e) => toggleFavorite(e, tool.id)}
+                          className="p-2 bg-black/60 backdrop-blur-md rounded-xl border border-white/10 hover:bg-white hover:text-black transition-all"
+                        >
+                          <Heart className={`w-4 h-4 ${favorites.includes(tool.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                        </button>
+                        <div className="px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 flex items-center">
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest">{tool.pricing}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-6 flex-grow flex flex-col">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500/80 bg-blue-500/10 px-2 py-0.5 rounded">
+                          {tool.category}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-black text-white group-hover:text-blue-400 transition-colors mb-2">
+                        {tool.name}
+                      </h3>
+                      <p className="text-slate-500 text-sm line-clamp-2 font-medium leading-relaxed mb-6">
+                        {tool.description}
+                      </p>
+                      <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
+                        <div className="flex items-center gap-1 text-blue-400 group-hover:translate-x-1 transition-transform">
+                          <span className="text-[10px] font-black uppercase tracking-widest">Ver Detalles</span>
+                          <ChevronRight className="w-3 h-3" />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {tools.length === 0 && (
+              <div className="text-center py-20">
+                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/10">
+                  <Search className="w-8 h-8 text-slate-600" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">No se encontraron herramientas</h3>
+                <p className="text-slate-500">Intenta con otros términos de búsqueda o categorías.</p>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-black border-t border-white/5 py-16 mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <Cpu className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-black tracking-tighter text-white">AIBit</span>
+              </div>
+              <p className="text-slate-500 text-sm max-w-sm leading-relaxed">
+                El directorio líder en herramientas de inteligencia artificial. Ayudamos a conectar a las personas con la tecnología del futuro.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-6">Legal</h4>
+              <ul className="space-y-4 text-sm text-slate-500">
+                <li><button onClick={() => setLegalPage("privacy")} className="hover:text-blue-400 transition-colors">Privacidad</button></li>
+                <li><button onClick={() => setLegalPage("terms")} className="hover:text-blue-400 transition-colors">Términos</button></li>
+                <li><button onClick={() => setLegalPage("cookies")} className="hover:text-blue-400 transition-colors">Cookies</button></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-6">Contacto</h4>
+              <ul className="space-y-4 text-sm text-slate-500">
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  marcovallemadero17@gmail.com
+                </li>
+                <li className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4" />
+                  Soporte 24/7
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="pt-8 border-t border-white/5 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest">
+            © 2024 AIBit. Todos los derechos reservados.
+          </div>
+        </div>
+      </footer>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] bg-blue-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-3 shadow-2xl shadow-blue-600/40"
+          >
+            <Check className="w-5 h-5" />
+            ¡Enlace Copiado al Portapapeles!
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Tool Modal */}
+      <AnimatePresence>
+        {selectedTool && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedTool(null)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-4xl bg-[#0f0f0f] rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl"
+            >
+              <button 
+                onClick={() => setSelectedTool(null)}
+                className="absolute top-6 right-6 z-10 p-2 bg-black/50 hover:bg-black/80 rounded-full text-white transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex flex-col lg:flex-row h-full max-h-[90vh] overflow-y-auto lg:overflow-hidden">
+                <div className="lg:w-1/2 h-64 lg:h-auto relative">
+                  <img 
+                    src={selectedTool.imageUrl} 
+                    alt={selectedTool.name}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f0f] via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:to-[#0f0f0f]" />
+                </div>
+
+                <div className="lg:w-1/2 p-8 lg:p-12 flex flex-col">
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 bg-blue-400/10 px-3 py-1 rounded-full border border-blue-400/20">
+                        {selectedTool.category}
+                      </span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                        {selectedTool.pricing}
+                      </span>
+                    </div>
+                    <button 
+                      onClick={(e) => toggleFavorite(e, selectedTool.id)}
+                      className={`p-3 rounded-2xl border transition-all ${
+                        favorites.includes(selectedTool.id) 
+                          ? "bg-red-500/10 border-red-500/50 text-red-500" 
+                          : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+                      }`}
+                    >
+                      <Heart className={`w-5 h-5 ${favorites.includes(selectedTool.id) ? 'fill-current' : ''}`} />
+                    </button>
+                  </div>
+
+                  <h2 className="text-5xl font-black text-white mb-6 tracking-tight leading-tight">{selectedTool.name}</h2>
+                  <p className="text-slate-400 text-xl leading-relaxed mb-10 font-medium">
+                    {selectedTool.description}
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4 mb-10">
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Popularidad</div>
+                      <div className="text-white font-bold flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-green-400" />
+                        Alta
+                      </div>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Valoración</div>
+                      <div className="text-white font-bold flex items-center gap-2">
+                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                        4.9/5
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 mb-12">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-blue-400" />
+                      Características Principales
+                    </h4>
+                    <div className="grid grid-cols-1 gap-3">
+                      {selectedTool.features.map((feature, i) => (
+                        <motion.div 
+                          key={i} 
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.1 }}
+                          className="flex items-center gap-4 text-base font-bold text-slate-300 bg-white/5 p-4 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-colors"
+                        >
+                          <div className="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                          {feature}
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-8 border-t border-white/5 flex flex-col sm:flex-row gap-4">
+                    <a 
+                      href={selectedTool.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-5 rounded-2xl font-black text-center transition-all flex items-center justify-center gap-3 shadow-xl shadow-blue-600/20 group"
+                    >
+                      Visitar Sitio Oficial
+                      <ExternalLink className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                    </a>
+                    <button 
+                      onClick={handleShare}
+                      className="px-8 py-5 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black transition-all border border-white/10 flex items-center justify-center gap-3"
+                    >
+                      <Share2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
