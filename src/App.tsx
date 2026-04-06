@@ -57,6 +57,7 @@ export default function App() {
   const [visitCount, setVisitCount] = useState<number | null>(null);
   const [myVisitNumber, setMyVisitNumber] = useState<number | null>(null);
   const [showVisitModal, setShowVisitModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const statsRef = doc(db, "stats", "global");
@@ -108,6 +109,10 @@ export default function App() {
 
   useEffect(() => {
     const filterTools = async () => {
+      setIsLoading(true);
+      // Artificial delay to show the skeleton effect
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
       let filtered = await searchTools(searchQuery);
       if (activeCategory === "Favoritos") {
         filtered = filtered.filter(t => favorites.includes(t.id));
@@ -115,6 +120,7 @@ export default function App() {
         filtered = filtered.filter(t => t.category === activeCategory);
       }
       setTools(filtered);
+      setIsLoading(false);
     };
     filterTools();
   }, [searchQuery, activeCategory, favorites]);
@@ -373,7 +379,38 @@ export default function App() {
             {/* Tools Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               <AnimatePresence mode="popLayout">
-                {tools.map((tool, idx) => (
+                {isLoading ? (
+                  // Skeleton Loading State
+                  Array.from({ length: 8 }).map((_, i) => (
+                    <div key={`skeleton-${i}`} className="bg-white/5 rounded-3xl border border-white/5 overflow-hidden flex flex-col h-[400px]">
+                      <div className="aspect-video w-full bg-white/5 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+                      </div>
+                      <div className="p-6 flex-grow flex flex-col gap-4">
+                        <div className="w-20 h-4 bg-white/5 rounded relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+                        </div>
+                        <div className="w-3/4 h-6 bg-white/10 rounded relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="w-full h-3 bg-white/5 rounded relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+                          </div>
+                          <div className="w-5/6 h-3 bg-white/5 rounded relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+                          </div>
+                        </div>
+                        <div className="mt-auto pt-4 border-t border-white/5 flex justify-between items-center">
+                          <div className="w-24 h-3 bg-white/5 rounded relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  tools.map((tool, idx) => (
                   <motion.div
                     key={tool.id}
                     layout
@@ -382,7 +419,7 @@ export default function App() {
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ delay: idx * 0.05 }}
                     onClick={() => setSelectedTool(tool)}
-                    className="group bg-white/5 rounded-3xl border border-white/5 overflow-hidden hover:bg-white/10 hover:border-white/20 transition-all cursor-pointer flex flex-col"
+                    className="group bg-white/5 rounded-3xl border border-white/5 overflow-hidden hover:bg-white/10 hover:border-blue-500/30 hover:shadow-[0_0_40px_rgba(59,130,246,0.15)] hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col"
                   >
                     <div className="aspect-video w-full overflow-hidden relative">
                       <img 
@@ -413,7 +450,7 @@ export default function App() {
                     </div>
                     <div className="p-6 flex-grow flex flex-col">
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500/80 bg-blue-500/10 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500/80 bg-blue-500/10 px-2 py-0.5 rounded group-hover:bg-blue-500/20 group-hover:text-blue-400 transition-colors duration-300">
                           {tool.category}
                         </span>
                       </div>
@@ -424,18 +461,19 @@ export default function App() {
                         {tool.description}
                       </p>
                       <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
-                        <div className="flex items-center gap-1 text-blue-400 group-hover:translate-x-1 transition-transform">
+                        <div className="flex items-center gap-1 text-blue-400 group-hover:text-blue-300 group-hover:translate-x-1 transition-all duration-300">
                           <span className="text-[10px] font-black uppercase tracking-widest">Ver Detalles</span>
                           <ChevronRight className="w-3 h-3" />
                         </div>
                       </div>
                     </div>
                   </motion.div>
-                ))}
+                ))
+              )}
               </AnimatePresence>
             </div>
 
-            {tools.length === 0 && (
+            {!isLoading && tools.length === 0 && (
               <div className="text-center py-20">
                 <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/10">
                   <Search className="w-8 h-8 text-slate-600" />
