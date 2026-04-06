@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fetchTechNews, fetchNewsDetail, NewsItem } from "./services/newsService";
+import LegalModal from "./components/LegalModals";
 
 const CATEGORIES = [
   { id: "General", name: "General", icon: Globe, color: "text-blue-600" },
@@ -29,7 +30,8 @@ const CATEGORIES = [
   { id: "IA", name: "Inteligencia Artificial", icon: BrainCircuit, color: "text-indigo-600" },
 ];
 
-const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutos
+const REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutos
+const CACHE_MAX_AGE = 60 * 60 * 1000; // 1 hora
 
 export default function App() {
   const [activeCategory, setActiveCategory] = useState("General");
@@ -41,45 +43,89 @@ export default function App() {
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [hasNewUpdates, setHasNewUpdates] = useState(false);
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: "privacy" | "terms" | "cookies" | "contact" }>({
+    isOpen: false,
+    type: "privacy"
+  });
   
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const newsRef = useRef<NewsItem[]>([]);
+
+  // Sincronizar ref con estado
+  useEffect(() => {
+    newsRef.current = news;
+  }, [news]);
 
   // Cargar desde cache inicial
   useEffect(() => {
     const cached = localStorage.getItem(`news_${activeCategory}`);
     if (cached) {
-      const parsed = JSON.parse(cached);
-      setNews(parsed.items);
-      setLastUpdated(parsed.time);
-      setLoading(false);
+      try {
+        const parsed = JSON.parse(cached);
+        setNews(parsed.items);
+        setLastUpdated(parsed.time);
+        setLoading(false);
+      } catch (e) {
+        console.error("Error parsing cache", e);
+      }
     }
   }, [activeCategory]);
 
-  const loadNews = useCallback(async (category: string, isBackground = false) => {
+  const loadNews = useCallback(async (category: string, isBackground = false, force = false) => {
+    // Si no es forzado y no es background, revisar si el cache es suficientemente reciente
+    if (!force && !isBackground) {
+      const cached = localStorage.getItem(`news_${category}`);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          const now = Date.now();
+          // Si el cache tiene menos de 30 minutos, no re-descargar al cambiar de pestaña
+          if (parsed.timestamp && (now - parsed.timestamp < REFRESH_INTERVAL)) {
+            return;
+          }
+        } catch (e) {
+          // Ignorar error de parseo y descargar
+        }
+      }
+    }
+
     if (!isBackground) setLoading(true);
     setError(null);
     try {
       const data = await fetchTechNews(category);
       
+      // Si recibimos exactamente las noticias estáticas de fallback, mostrar aviso
+      const isStaticFallback = data.length > 0 && data[0].id.startsWith("fallback-");
+      
       if (isBackground) {
-        // Comparar si hay noticias nuevas (por ID del primer elemento)
-        if (data.length > 0 && news.length > 0 && data[0].id !== news[0].id) {
+        const currentNews = newsRef.current;
+        if (data.length > 0 && currentNews.length > 0 && data[0].id !== currentNews[0].id) {
           setHasNewUpdates(true);
         }
       } else {
         setNews(data);
         const time = new Date().toLocaleTimeString();
         setLastUpdated(time);
-        localStorage.setItem(`news_${category}`, JSON.stringify({ items: data, time }));
+        localStorage.setItem(`news_${category}`, JSON.stringify({ 
+          items: data, 
+          time,
+          timestamp: Date.now() 
+        }));
         setHasNewUpdates(false);
+        
+        if (isStaticFallback) {
+          setError("Límite de API alcanzado. Mostrando noticias de archivo.");
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      if (!isBackground) setError("No se pudieron cargar las noticias. Inténtalo de nuevo.");
+      if (!isBackground) {
+        setError("Límite de búsqueda alcanzado. Mostrando noticias guardadas.");
+      }
     } finally {
       if (!isBackground) setLoading(false);
     }
-  }, [news]);
+  }, []); // Sin dependencia de news para evitar loop
 
   // Efecto para carga inicial y cambio de categoría
   useEffect(() => {
@@ -124,7 +170,7 @@ export default function App() {
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
             <Newspaper className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-xl tracking-tight text-slate-900">TechPulse</span>
+          <span className="font-bold text-xl tracking-tight text-slate-900">CeroBit</span>
         </div>
         <button 
           onClick={toggleSidebar}
@@ -145,7 +191,7 @@ export default function App() {
               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <Newspaper className="w-6 h-6 text-white" />
               </div>
-              <span className="font-bold text-2xl tracking-tight text-slate-900">TechPulse</span>
+              <span className="font-bold text-2xl tracking-tight text-slate-900">CeroBit</span>
             </div>
 
             <nav className="space-y-1 flex-grow">
@@ -207,7 +253,7 @@ export default function App() {
                   </span>
                 )}
                 <button 
-                  onClick={() => loadNews(activeCategory)}
+                  onClick={() => loadNews(activeCategory, false, true)}
                   disabled={loading}
                   className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50 shadow-sm"
                 >
@@ -231,10 +277,32 @@ export default function App() {
                     <span className="text-sm font-bold tracking-wide">¡Hay nuevas noticias disponibles!</span>
                   </div>
                   <button 
-                    onClick={() => loadNews(activeCategory)}
+                    onClick={() => loadNews(activeCategory, false, true)}
                     className="px-4 py-2 bg-white text-blue-600 rounded-full text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-all"
                   >
                     Ver ahora
+                  </button>
+                </motion.div>
+              )}
+              
+              {error && news.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="mb-8 p-4 bg-amber-50 border border-amber-100 text-amber-800 rounded-2xl flex items-center justify-between shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                      <X className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <span className="text-sm font-medium">{error}</span>
+                  </div>
+                  <button 
+                    onClick={() => setError(null)}
+                    className="p-2 hover:bg-amber-100 rounded-full transition-colors"
+                  >
+                    <X className="w-4 h-4" />
                   </button>
                 </motion.div>
               )}
@@ -262,7 +330,7 @@ export default function App() {
                     </div>
                   ))}
                 </motion.div>
-              ) : error ? (
+              ) : error && news.length === 0 ? (
                 <motion.div 
                   key="error"
                   initial={{ opacity: 0, scale: 0.98 }}
@@ -275,7 +343,7 @@ export default function App() {
                   <p className="text-red-900 font-bold text-xl mb-2">Algo salió mal</p>
                   <p className="text-red-600/70 mb-8 max-w-md mx-auto">{error}</p>
                   <button 
-                    onClick={() => loadNews(activeCategory)}
+                    onClick={() => loadNews(activeCategory, false, true)}
                     className="px-8 py-3 bg-red-600 text-white rounded-full font-bold text-sm hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
                   >
                     Intentar de nuevo
@@ -355,6 +423,27 @@ export default function App() {
                 <p className="text-slate-400 font-medium">No hay noticias disponibles en este momento.</p>
               </div>
             )}
+
+            {/* Footer */}
+            <footer className="mt-24 pt-12 border-t border-slate-100 pb-12">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                    <Newspaper className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <span className="font-bold text-lg tracking-tight text-slate-400">CeroBit News</span>
+                </div>
+                
+                <div className="flex flex-wrap justify-center gap-8">
+                  <button onClick={() => setLegalModal({ isOpen: true, type: "privacy" })} className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">Privacidad</button>
+                  <button onClick={() => setLegalModal({ isOpen: true, type: "terms" })} className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">Términos</button>
+                  <button onClick={() => setLegalModal({ isOpen: true, type: "cookies" })} className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">Cookies</button>
+                  <button onClick={() => setLegalModal({ isOpen: true, type: "contact" })} className="text-xs font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest">Contacto</button>
+                </div>
+
+                <p className="text-xs text-slate-400 font-medium">© 2026 CeroBit News. Todos los derechos reservados.</p>
+              </div>
+            </footer>
           </div>
         </main>
       </div>
@@ -469,6 +558,12 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <LegalModal 
+        isOpen={legalModal.isOpen} 
+        onClose={() => setLegalModal({ ...legalModal, isOpen: false })} 
+        type={legalModal.type} 
+      />
     </div>
   );
 }
