@@ -23,10 +23,14 @@ import {
   Heart,
   Check,
   TrendingUp,
-  Star
+  Star,
+  Users,
+  Trophy
 } from "lucide-react";
 import { AI_TOOLS, AITool, searchTools } from "./services/aiService";
 import { LEGAL_CONTENT } from "./constants/legal";
+import { db } from "./firebase";
+import { doc, onSnapshot, runTransaction } from "firebase/firestore";
 
 const CATEGORIES = [
   "Todos",
@@ -50,6 +54,47 @@ export default function App() {
   });
   const [showToast, setShowToast] = useState(false);
   const [toolOfTheDay, setToolOfTheDay] = useState<AITool | null>(null);
+  const [visitCount, setVisitCount] = useState<number | null>(null);
+  const [myVisitNumber, setMyVisitNumber] = useState<number | null>(null);
+  const [showVisitModal, setShowVisitModal] = useState(false);
+
+  useEffect(() => {
+    const statsRef = doc(db, "stats", "global");
+    
+    // Listen for global count
+    const unsubscribe = onSnapshot(statsRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setVisitCount(docSnap.data().visitCount);
+      }
+    });
+
+    const incrementVisit = async () => {
+      try {
+        await runTransaction(db, async (transaction) => {
+          const sfDoc = await transaction.get(statsRef);
+          if (!sfDoc.exists()) {
+            transaction.set(statsRef, { visitCount: 1 });
+            setMyVisitNumber(1);
+          } else {
+            const newCount = sfDoc.data().visitCount + 1;
+            transaction.update(statsRef, { visitCount: newCount });
+            setMyVisitNumber(newCount);
+          }
+        });
+        setShowVisitModal(true);
+      } catch (e) {
+        console.error("Transaction failed: ", e);
+      }
+    };
+
+    const hasVisitedThisSession = sessionStorage.getItem("aibit_session_visited");
+    if (!hasVisitedThisSession) {
+      incrementVisit();
+      sessionStorage.setItem("aibit_session_visited", "true");
+    }
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     // Select a random tool of the day
@@ -108,7 +153,15 @@ export default function App() {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <Cpu className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-black tracking-tighter text-white">AIBit</span>
+              <div className="flex flex-col">
+                <span className="text-xl font-black tracking-tighter text-white leading-none">AIBit</span>
+                {visitCount !== null && (
+                  <div className="flex items-center gap-1 text-[8px] font-black text-blue-400 uppercase tracking-widest mt-0.5">
+                    <Users className="w-2 h-2" />
+                    {visitCount.toLocaleString()} Visitas
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="hidden md:flex items-center gap-8">
@@ -450,6 +503,41 @@ export default function App() {
             <Check className="w-5 h-5" />
             ¡Enlace Copiado al Portapapeles!
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Congratulations Modal */}
+      <AnimatePresence>
+        {showVisitModal && myVisitNumber && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowVisitModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-[#0f0f0f] rounded-[2.5rem] border border-blue-500/30 p-8 text-center shadow-2xl shadow-blue-600/20"
+            >
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-blue-600/40">
+                <Trophy className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-2 tracking-tight">¡Felicidades!</h2>
+              <p className="text-slate-400 font-medium mb-8">
+                Eres la persona número <span className="text-blue-400 font-black text-2xl px-2">#{myVisitNumber.toLocaleString()}</span> en entrar a AIBit.
+              </p>
+              <button 
+                onClick={() => setShowVisitModal(false)}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-black transition-all shadow-lg shadow-blue-600/20"
+              >
+                ¡Genial, gracias!
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

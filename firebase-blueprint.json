@@ -1,0 +1,22 @@
+{
+  "entities": {
+    "Stats": {
+      "title": "Global Statistics",
+      "description": "Global counters for the application",
+      "type": "object",
+      "properties": {
+        "visitCount": {
+          "type": "number",
+          "description": "Total number of visits to the site"
+        }
+      },
+      "required": ["visitCount"]
+    }
+  },
+  "firestore": {
+    "/stats/global": {
+      "schema": "Stats",
+      "description": "The global document tracking total visits"
+    }
+  }
+}
