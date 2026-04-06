@@ -49,7 +49,8 @@ const STATIC_FALLBACK_NEWS: NewsItem[] = [
 
 export async function fetchTechNews(category: string): Promise<NewsItem[]> {
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not set");
+    console.warn("GEMINI_API_KEY is not set. Returning static fallback news.");
+    return STATIC_FALLBACK_NEWS;
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -125,7 +126,9 @@ export async function fetchTechNews(category: string): Promise<NewsItem[]> {
 }
 
 export async function fetchNewsDetail(item: NewsItem): Promise<string> {
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+  if (!apiKey) {
+    return "Límite de API alcanzado. No se puede generar el detalle en este momento ya que no se ha configurado la clave de API en el entorno de despliegue.";
+  }
   const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `Basándote en esta noticia: "${item.title}" de ${item.source} (${item.url}).
