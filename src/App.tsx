@@ -112,16 +112,10 @@ export default function App() {
           timestamp: Date.now() 
         }));
         setHasNewUpdates(false);
-        
-        if (isStaticFallback) {
-          setError("Límite de API alcanzado. Mostrando noticias de archivo.");
-        }
       }
     } catch (err: any) {
       console.error(err);
-      if (!isBackground) {
-        setError("Límite de búsqueda alcanzado. Mostrando noticias guardadas.");
-      }
+      // Silent fallback is handled by newsService returning static data
     } finally {
       if (!isBackground) setLoading(false);
     }
@@ -163,18 +157,18 @@ export default function App() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
       {/* Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+      <header className="lg:hidden sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 py-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center shadow-lg shadow-slate-900/10">
             <Newspaper className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-xl tracking-tight text-slate-900">CeroBit</span>
+          <span className="font-black text-xl tracking-tighter text-slate-900">CeroBit</span>
         </div>
         <button 
           onClick={toggleSidebar}
-          className="p-2 hover:bg-slate-50 rounded-full transition-colors text-slate-600"
+          className="p-2.5 hover:bg-slate-100 rounded-xl transition-all text-slate-600 active:scale-95"
         >
           {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -183,19 +177,19 @@ export default function App() {
       <div className="flex relative">
         {/* Sidebar */}
         <aside className={`
-          fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-100 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:h-screen
-          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200/60 transform transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] lg:translate-x-0 lg:static lg:h-screen
+          ${isSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}
         `}>
           <div className="p-8 h-full flex flex-col">
-            <div className="hidden lg:flex items-center gap-3 mb-12">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <div className="hidden lg:flex items-center gap-3.5 mb-14">
+              <div className="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl shadow-slate-900/10">
                 <Newspaper className="w-6 h-6 text-white" />
               </div>
-              <span className="font-bold text-2xl tracking-tight text-slate-900">CeroBit</span>
+              <span className="font-black text-2xl tracking-tighter text-slate-900">CeroBit</span>
             </div>
 
-            <nav className="space-y-1 flex-grow">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-6 px-4">Explorar</p>
+            <nav className="space-y-1.5 flex-grow">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] mb-7 px-4">Explorar</p>
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.id}
@@ -205,59 +199,64 @@ export default function App() {
                     setHasNewUpdates(false);
                   }}
                   className={`
-                    w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 group
+                    w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all duration-300 group relative
                     ${activeCategory === cat.id 
-                      ? "bg-blue-50 text-blue-700 font-semibold" 
+                      ? "bg-slate-900 text-white font-bold shadow-lg shadow-slate-900/10" 
                       : "hover:bg-slate-50 text-slate-500 hover:text-slate-900"}
                   `}
                 >
-                  <cat.icon className={`w-5 h-5 ${activeCategory === cat.id ? cat.color : "text-slate-400 group-hover:text-slate-600"}`} />
-                  <span className="text-sm">{cat.name}</span>
+                  <cat.icon className={`w-5 h-5 ${activeCategory === cat.id ? "text-blue-400" : "text-slate-400 group-hover:text-slate-600"}`} />
+                  <span className="text-sm tracking-tight">{cat.name}</span>
                   {activeCategory === cat.id && (
-                    <motion.div layoutId="active-indicator" className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600" />
+                    <motion.div layoutId="active-indicator" className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />
                   )}
                 </button>
               ))}
             </nav>
 
-            <div className="mt-auto pt-8 border-t border-slate-50">
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Tecnología</p>
-                <p className="font-bold text-sm flex items-center gap-2 text-slate-700">
-                  <BrainCircuit className="w-4 h-4 text-indigo-500" />
-                  Gemini AI Engine
-                </p>
+            <div className="mt-auto pt-8 border-t border-slate-100">
+              <div className="bg-slate-50 rounded-[2rem] p-6 border border-slate-100/50">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tecnología</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                    <BrainCircuit className="w-4 h-4 text-slate-900" />
+                  </div>
+                  <p className="font-bold text-xs text-slate-700 tracking-tight">
+                    Gemini AI Engine
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-grow h-screen overflow-y-auto bg-[#FDFDFD]">
-          <div className="max-w-6xl mx-auto p-6 lg:p-12">
-            <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-8">
-              <div>
-                <div className="flex items-center gap-2 text-blue-600 font-bold mb-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-                  <span className="text-[10px] uppercase tracking-[0.2em]">Actualizado hoy</span>
+        <main className="flex-grow h-screen overflow-y-auto bg-[#F8F9FA] scroll-smooth">
+          <div className="max-w-6xl mx-auto p-6 lg:p-16">
+            <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-10">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2.5 text-blue-600 font-black">
+                  <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
+                  <span className="text-[10px] uppercase tracking-[0.3em]">En Vivo • Actualizado</span>
                 </div>
-                <h1 className="text-5xl lg:text-6xl font-black tracking-tight text-slate-900">
+                <h1 className="text-6xl lg:text-7xl font-black tracking-tighter text-slate-900 leading-[0.9]">
                   {CATEGORIES.find(c => c.id === activeCategory)?.name}
                 </h1>
               </div>
 
-              <div className="flex flex-col md:flex-row md:items-center gap-5">
+              <div className="flex flex-col md:flex-row md:items-center gap-6">
                 {lastUpdated && (
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                    Última vez: {lastUpdated}
-                  </span>
+                  <div className="flex flex-col items-start md:items-end">
+                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Última actualización</span>
+                    <span className="text-xs font-bold text-slate-600">{lastUpdated}</span>
+                  </div>
                 )}
                 <button 
                   onClick={() => loadNews(activeCategory, false, true)}
                   disabled={loading}
-                  className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50 shadow-sm"
+                  className="flex items-center gap-2.5 px-8 py-4 bg-white border border-slate-200/60 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all duration-300 disabled:opacity-50 shadow-sm active:scale-95"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                  <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
                   Refrescar
                 </button>
               </div>
@@ -270,39 +269,17 @@ export default function App() {
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="mb-8 p-4 bg-blue-600 text-white rounded-2xl flex items-center justify-between shadow-xl shadow-blue-600/20"
+                  className="mb-8 p-4 bg-slate-900 text-white rounded-2xl flex items-center justify-between shadow-xl shadow-slate-900/20"
                 >
                   <div className="flex items-center gap-3">
-                    <Bell className="w-5 h-5 animate-bounce" />
-                    <span className="text-sm font-bold tracking-wide">¡Hay nuevas noticias disponibles!</span>
+                    <Bell className="w-5 h-5 text-blue-400" />
+                    <span className="text-sm font-medium tracking-tight">Nuevas noticias disponibles</span>
                   </div>
                   <button 
                     onClick={() => loadNews(activeCategory, false, true)}
-                    className="px-4 py-2 bg-white text-blue-600 rounded-full text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-all"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all"
                   >
-                    Ver ahora
-                  </button>
-                </motion.div>
-              )}
-              
-              {error && news.length > 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="mb-8 p-4 bg-amber-50 border border-amber-100 text-amber-800 rounded-2xl flex items-center justify-between shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                      <X className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <span className="text-sm font-medium">{error}</span>
-                  </div>
-                  <button 
-                    onClick={() => setError(null)}
-                    className="p-2 hover:bg-amber-100 rounded-full transition-colors"
-                  >
-                    <X className="w-4 h-4" />
+                    Actualizar
                   </button>
                 </motion.div>
               )}
@@ -335,18 +312,18 @@ export default function App() {
                   key="error"
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-red-50 border border-red-100 rounded-[2.5rem] p-16 text-center"
+                  className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-16 text-center"
                 >
-                  <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <X className="w-8 h-8" />
+                  <div className="w-16 h-16 bg-white border border-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <RefreshCw className="w-8 h-8" />
                   </div>
-                  <p className="text-red-900 font-bold text-xl mb-2">Algo salió mal</p>
-                  <p className="text-red-600/70 mb-8 max-w-md mx-auto">{error}</p>
+                  <p className="text-slate-900 font-bold text-xl mb-2">Estamos actualizando el contenido</p>
+                  <p className="text-slate-500 mb-8 max-w-md mx-auto">Vuelve a intentarlo en unos momentos o refresca la página.</p>
                   <button 
                     onClick={() => loadNews(activeCategory, false, true)}
-                    className="px-8 py-3 bg-red-600 text-white rounded-full font-bold text-sm hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
+                    className="px-8 py-3 bg-blue-600 text-white rounded-full font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
                   >
-                    Intentar de nuevo
+                    Reintentar
                   </button>
                 </motion.div>
               ) : (
@@ -359,19 +336,19 @@ export default function App() {
                   {news.map((item, idx) => (
                     <motion.article 
                       key={item.id || idx}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
+                      transition={{ delay: idx * 0.05, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
                       onClick={() => handleSelectNews(item)}
-                      className="group cursor-pointer bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 flex flex-col"
+                      className="group cursor-pointer bg-white rounded-[2rem] border border-slate-200/60 overflow-hidden hover:shadow-[0_32px_64px_-12px_rgba(0,0,0,0.08)] transition-all duration-500 flex flex-col relative"
                     >
-                      <div className="relative h-56 overflow-hidden">
+                      <div className="relative h-64 overflow-hidden">
                         {item.imageUrl ? (
                           <img 
                             src={item.imageUrl} 
                             alt={item.title}
                             referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-out"
                           />
                         ) : (
                           <div className="w-full h-full bg-slate-50 flex items-center justify-center">
@@ -379,32 +356,32 @@ export default function App() {
                           </div>
                         )}
                         <div className="absolute top-6 left-6">
-                          <span className="px-4 py-1.5 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm">
+                          <span className="px-4 py-2 bg-white/90 backdrop-blur-xl text-slate-900 text-[9px] font-black uppercase tracking-[0.2em] rounded-xl shadow-sm border border-white/20">
                             {item.source}
                           </span>
                         </div>
                       </div>
                       
-                      <div className="p-8 flex flex-col flex-grow">
-                        <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">
-                          <Clock className="w-3 h-3" />
+                      <div className="p-9 flex flex-col flex-grow">
+                        <div className="flex items-center gap-2.5 text-slate-400 text-[10px] font-black uppercase tracking-widest mb-5">
+                          <Clock className="w-3.5 h-3.5" />
                           {item.date}
                         </div>
 
-                        <h3 className="text-2xl font-bold leading-tight mb-4 text-slate-900 group-hover:text-blue-600 transition-colors">
+                        <h3 className="text-2xl font-black leading-[1.15] mb-5 text-slate-900 group-hover:text-blue-600 transition-colors tracking-tight">
                           {item.title}
                         </h3>
 
-                        <div className="text-slate-500 text-sm leading-relaxed mb-8 line-clamp-3">
+                        <div className="text-slate-500 text-sm leading-relaxed mb-10 line-clamp-3 font-medium">
                           {item.summary}
                         </div>
 
-                        <div className="mt-auto flex items-center justify-between">
-                          <span className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-2">
-                            Leer noticia
-                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between">
+                          <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2 group-hover:text-blue-600 transition-colors">
+                            Leer artículo
+                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" />
                           </span>
-                          <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
+                          <div className="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-all duration-300 group-hover:rotate-[-10deg]">
                             <ArrowLeft className="w-4 h-4 rotate-180" />
                           </div>
                         </div>
